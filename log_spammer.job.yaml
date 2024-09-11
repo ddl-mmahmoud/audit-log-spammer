@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nucleus-test-log-spammer
+spec:
+  template:
+    metadata:
+      labels:
+        fluentd-client: "true"
+    spec:
+      containers:
+      - name: log-spammer
+        image: quay.io/domino/idsm-test-audit-log-spammer:2024-09-11
+        env:
+          - name: SPAM_WAIT_MILLISECONDS
+            value: "200"
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+      restartPolicy: Never
+  backoffLimit: 2
