@@ -8,15 +8,20 @@ spec:
       labels:
         fluentd-client: "true"
     spec:
+      nodeSelector:
+        dominodatalab.com/domino-node: "true"
+        dominodatalab.com/node-pool: "platform"
       containers:
       - name: log-spammer
         image: quay.io/domino/idsm-test-audit-log-spammer:2024-09-11
+        imagePullPolicy: Always
         env:
           - name: SPAM_WAIT_MILLISECONDS
-            value: "200"
+            value: "1"
         resources:
           limits:
             memory: "128Mi"
             cpu: "500m"
       restartPolicy: Never
   backoffLimit: 2
+  parallelism: 50
