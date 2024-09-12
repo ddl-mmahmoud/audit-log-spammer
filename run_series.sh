@@ -10,6 +10,26 @@ _mongo () {
 }
 
 
+duration=300
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            sed -n '/^while/,/^done/p' "$0" | grep -oP '\S+(?=\)$)'
+            exit 0
+            ;;
+        -d|--duration|--duration-seconds)
+            duration="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+
+
 i=0
 n="$#"
 [ "$n" -eq 0 ] && { echo "Did not provide any parallelisms to use"; exit 1; }
@@ -28,7 +48,7 @@ EOF
     _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
     sed -e "s/parallelism: .*/parallelism: $parallelism/" log_spammer.job.yaml > "$tmp/this_run.yaml"
     kubectl apply -n domino-platform -f "$tmp/this_run.yaml"
-    sleep 300
+    sleep "$duration"
     kubectl delete -n domino-platform -f "$tmp/this_run.yaml"
     _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
     i="$(( $i + 1 ))"
