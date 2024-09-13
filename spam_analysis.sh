@@ -11,7 +11,7 @@ job_id="$(grep -oP '(?<=FAKE job )\S+' <<< "$last_event")"
 
 
 _mongo_eval () {
-    kubectl exec -it -n "$platform_ns" svc/audit-trail-mongodb-bitnami-mongodb-headless -- \
+    kubectl exec -n "$platform_ns" svc/audit-trail-mongodb-bitnami-mongodb-headless -- \
         mongo --quiet -u audit -p "$mongo_password" audit_events \
         --eval "$@"
 }

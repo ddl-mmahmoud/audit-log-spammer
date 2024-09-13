@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 tmp="$(mktemp -d)"
 
@@ -6,8 +6,22 @@ platform_ns="$(kubectl get ns -l domino-platform -o json | jq -r '.items[0].meta
 mongo_password="$(kubectl get secret -n "$platform_ns" audit-trail-mongodb-bitnami-mongodb-svcbind-0 -o json | jq -r '.data.password | @base64d')"
 
 _mongo () {
-    kubectl exec -it -n "$platform_ns" svc/audit-trail-mongodb-bitnami-mongodb-headless -- mongo --quiet -u audit -p "$mongo_password" audit_events "$@"
+    kubectl exec -n "$platform_ns" audit-trail-mongodb-bitnami-mongodb-0 -- mongo --quiet -u audit -p "$mongo_password" audit_events "$@"
 }
+
+
+_cleanup () {
+    kubectl delete job -n "$platform_ns" "nucleus-test-log-spammer"
+    _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
+    num_found="$(_mongo --eval 'db.events.find({"action.eventName": {"$regex": "FAKE"}}).count()')"
+    while [ "$num_found" -gt 0 ]; do
+        _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
+        num_found="$(_mongo --eval 'db.events.find({"action.eventName": {"$regex": "FAKE"}}).count()')"
+        sleep 1
+    done
+}
+
+trap _cleanup EXIT
 
 
 duration=300
@@ -45,11 +59,10 @@ iteration: $i
 total_iterations: $n
 
 EOF
-    _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
+    _cleanup
     sed -e "s/parallelism: .*/parallelism: $parallelism/" log_spammer.job.yaml > "$tmp/this_run.yaml"
     kubectl apply -n domino-platform -f "$tmp/this_run.yaml"
     sleep "$duration"
-    kubectl delete -n domino-platform -f "$tmp/this_run.yaml"
-    _mongo --eval 'db.events.remove({"action.eventName": {"$regex": "FAKE"}})'
+    _cleanup
     i="$(( $i + 1 ))"
 done
